@@ -1,0 +1,115 @@
+// Prisma schema — Sistem Helpdesk Tiket IT Diskominfosantik
+// Struktur ini ngikutin ERD yang udah didesain di Fase 0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Role yang dipakai di sistem. Disimpan sebagai enum biar ga typo pas nulis string manual.
+enum Role {
+  ADMIN
+  TEKNISI
+  USER_DINAS
+}
+
+enum TicketStatus {
+  SUBMITTED
+  DISPOSISI
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REOPENED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Dinas {
+  id        Int      @id @default(autoincrement())
+  namaDinas String   @map("nama_dinas")
+  alamat    String?
+  users     User[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("dinas")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  dinasId      Int?     @map("dinas_id")
+  dinas        Dinas?   @relation(fields: [dinasId], references: [id])
+  nama         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(USER_DINAS)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Tiket yang diajukan user ini (sebagai pelapor)
+  ticketsSubmitted Ticket[] @relation("TicketSubmitter")
+  // Tiket yang ditangani user ini (kalau role = TEKNISI)
+  ticketsHandled   Ticket[] @relation("TicketHandler")
+  comments         Comment[]
+
+  @@map("users")
+}
+
+model Category {
+  id            Int      @id @default(autoincrement())
+  namaKategori  String   @map("nama_kategori") // Jaringan, Server, Website, Hardware
+  slaHari       Int      @map("sla_hari")      // estimasi hari penyelesaian
+  tickets       Ticket[]
+
+  @@map("categories")
+}
+
+model Ticket {
+  id          Int          @id @default(autoincrement())
+  userId      Int          @map("user_id")
+  user        User         @relation("TicketSubmitter", fields: [userId], references: [id])
+  teknisiId   Int?         @map("teknisi_id")
+  teknisi     User?        @relation("TicketHandler", fields: [teknisiId], references: [id])
+  categoryId  Int          @map("category_id")
+  category    Category     @relation(fields: [categoryId], references: [id])
+  judul       String
+  deskripsi   String
+  status      TicketStatus @default(SUBMITTED)
+  prioritas   Priority?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  resolvedAt  DateTime?    @map("resolved_at")
+
+  statusLogs  StatusLog[]
+  comments    Comment[]
+
+  @@map("tickets")
+}
+
+model StatusLog {
+  id          Int          @id @default(autoincrement())
+  ticketId    Int          @map("ticket_id")
+  ticket      Ticket       @relation(fields: [ticketId], references: [id])
+  statusLama  TicketStatus @map("status_lama")
+  statusBaru  TicketStatus @map("status_baru")
+  changedAt   DateTime     @default(now()) @map("changed_at")
+
+  @@map("status_logs")
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  ticketId    Int      @map("ticket_id")
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  isiKomentar String   @map("isi_komentar")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("comments")
+}
