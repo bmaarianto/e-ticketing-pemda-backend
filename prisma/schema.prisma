@@ -63,7 +63,7 @@ model User {
 
 model Category {
   id            Int      @id @default(autoincrement())
-  namaKategori  String   @map("nama_kategori") // Jaringan, Server, Website, Hardware
+  namaKategori  String   @unique @map("nama_kategori") // Jaringan, Server, Website, Hardware
   slaHari       Int      @map("sla_hari")      // estimasi hari penyelesaian
   tickets       Ticket[]
 
@@ -80,6 +80,7 @@ model Ticket {
   category    Category     @relation(fields: [categoryId], references: [id])
   judul       String
   deskripsi   String
+  attachmentUrl String?    @map("attachment_url") // path file lampiran, opsional
   status      TicketStatus @default(SUBMITTED)
   prioritas   Priority?
   createdAt   DateTime     @default(now()) @map("created_at")
